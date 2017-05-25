@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,14 +37,15 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+
 package org.glassfish.jersey.server.mvc.freemarker;
 
-
-import javax.inject.Inject;
-import javax.servlet.ServletContext;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+
+import javax.servlet.ServletContext;
 
 import freemarker.cache.ClassTemplateLoader;
 import freemarker.cache.FileTemplateLoader;
@@ -52,9 +53,6 @@ import freemarker.cache.MultiTemplateLoader;
 import freemarker.cache.TemplateLoader;
 import freemarker.cache.WebappTemplateLoader;
 import freemarker.template.Configuration;
-import org.jvnet.hk2.annotations.Optional;
-import jersey.repackaged.com.google.common.collect.Lists;
-
 
 /**
  * Handy {@link FreemarkerConfigurationFactory} that supplies a minimally
@@ -72,12 +70,11 @@ public class FreemarkerDefaultConfigurationFactory implements FreemarkerConfigur
 
     protected final Configuration configuration;
 
-    @Inject
-    public FreemarkerDefaultConfigurationFactory(@Optional final ServletContext servletContext) {
+    public FreemarkerDefaultConfigurationFactory(ServletContext servletContext) {
         super();
 
         // Create different loaders.
-        final List<TemplateLoader> loaders = Lists.newArrayList();
+        final List<TemplateLoader> loaders = new ArrayList<>();
         if (servletContext != null) {
             loaders.add(new WebappTemplateLoader(servletContext));
         }

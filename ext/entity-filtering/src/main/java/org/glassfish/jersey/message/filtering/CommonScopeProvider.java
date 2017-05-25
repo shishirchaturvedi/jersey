@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,27 +42,27 @@ package org.glassfish.jersey.message.filtering;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.core.Configuration;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.glassfish.jersey.internal.inject.InjectionManager;
 import org.glassfish.jersey.internal.inject.Providers;
 import org.glassfish.jersey.message.filtering.internal.LocalizationMessages;
 import org.glassfish.jersey.message.filtering.spi.FilteringHelper;
 import org.glassfish.jersey.message.filtering.spi.ScopeProvider;
 import org.glassfish.jersey.message.filtering.spi.ScopeResolver;
 import org.glassfish.jersey.model.internal.RankedComparator;
-
-import org.glassfish.hk2.api.ServiceLocator;
-
-import jersey.repackaged.com.google.common.collect.Lists;
-import jersey.repackaged.com.google.common.collect.Sets;
 
 /**
  * Default implementation of {@link ScopeProvider scope provider}. This class can be used on client to retrieve
@@ -82,19 +82,19 @@ class CommonScopeProvider implements ScopeProvider {
 
     /**
      * Create new common scope provider with injected {@link Configuration configuration} and
-     * {@link ServiceLocator HK2 service locator}.
+     * {@link InjectionManager injection manager}.
      */
     @Inject
-    public CommonScopeProvider(final Configuration config, final ServiceLocator serviceLocator) {
+    public CommonScopeProvider(final Configuration config, final InjectionManager injectionManager) {
         this.config = config;
-
-        this.resolvers = Lists.newArrayList(Providers.getAllProviders(
-                serviceLocator, ScopeResolver.class, new RankedComparator<ScopeResolver>()));
+        Spliterator<ScopeResolver> resolverSpliterator =
+                Providers.getAllProviders(injectionManager, ScopeResolver.class, new RankedComparator<>()).spliterator();
+        this.resolvers = StreamSupport.stream(resolverSpliterator, false).collect(Collectors.toList());
     }
 
     @Override
     public Set<String> getFilteringScopes(final Annotation[] entityAnnotations, final boolean defaultIfNotFound) {
-        Set<String> filteringScopes = Sets.newHashSet();
+        Set<String> filteringScopes = new HashSet<>();
 
         // Entity Annotations.
         filteringScopes.addAll(getFilteringScopes(entityAnnotations));
@@ -128,7 +128,7 @@ class CommonScopeProvider implements ScopeProvider {
      * @return entity-filtering scopes or an empty set if none scope can be resolved.
      */
     protected Set<String> getFilteringScopes(final Annotation[] annotations) {
-        Set<String> filteringScopes = Sets.newHashSet();
+        Set<String> filteringScopes = new HashSet<>();
         for (final ScopeResolver provider : resolvers) {
             mergeFilteringScopes(filteringScopes, provider.resolve(annotations));
         }

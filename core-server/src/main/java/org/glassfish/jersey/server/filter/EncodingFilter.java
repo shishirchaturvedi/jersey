@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,13 +37,16 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+
 package org.glassfish.jersey.server.filter;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,14 +60,10 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 
+import org.glassfish.jersey.internal.inject.InjectionManager;
 import org.glassfish.jersey.message.internal.HttpHeaderReader;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.spi.ContentEncoder;
-
-import org.glassfish.hk2.api.ServiceLocator;
-
-import jersey.repackaged.com.google.common.collect.Lists;
-import jersey.repackaged.com.google.common.collect.Sets;
 
 /**
  * Container filter that supports encoding-based content negotiation. The filter examines what
@@ -85,7 +84,7 @@ public final class EncodingFilter implements ContainerResponseFilter {
     private static final String IDENTITY_ENCODING = "identity";
 
     @Inject
-    private ServiceLocator serviceLocator;
+    private InjectionManager injectionManager;
     // sorted set to keep the order same for different invocations of the app
     private volatile SortedSet<String> supportedEncodings = null;
 
@@ -127,7 +126,7 @@ public final class EncodingFilter implements ContainerResponseFilter {
         }
 
         // convert encodings from String to Encoding objects
-        List<ContentEncoding> encodings = Lists.newArrayList();
+        List<ContentEncoding> encodings = new ArrayList<>();
         for (String input : acceptEncoding) {
             String[] tokens = input.split(",");
             for (String token : tokens) {
@@ -148,7 +147,7 @@ public final class EncodingFilter implements ContainerResponseFilter {
         encodings.add(new ContentEncoding(IDENTITY_ENCODING, -1));
 
         // get a copy of supported encoding (we'll be modifying this set, hence the copy)
-        SortedSet<String> acceptedEncodings = Sets.newTreeSet(getSupportedEncodings());
+        SortedSet<String> acceptedEncodings = new TreeSet<>(getSupportedEncodings());
 
         // indicates that we can pick any of the encodings that remained in the acceptedEncodings set
         boolean anyRemaining = false;
@@ -243,8 +242,8 @@ public final class EncodingFilter implements ContainerResponseFilter {
         // no need for synchronization - in case of a race condition, the property
         // may be set twice, but it does not break anything
         if (supportedEncodings == null) {
-            SortedSet<String> se = Sets.newTreeSet();
-            List<ContentEncoder> encoders = serviceLocator.getAllServices(ContentEncoder.class);
+            SortedSet<String> se = new TreeSet<>();
+            List<ContentEncoder> encoders = injectionManager.getAllInstances(ContentEncoder.class);
             for (ContentEncoder encoder : encoders) {
                 se.addAll(encoder.getSupportedEncodings());
             }

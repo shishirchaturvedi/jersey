@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -41,6 +41,7 @@
 package org.glassfish.jersey.message.filtering;
 
 import java.lang.annotation.Annotation;
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.ws.rs.ConstrainedTo;
@@ -52,9 +53,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.glassfish.hk2.api.ServiceLocator;
-
-import jersey.repackaged.com.google.common.collect.Sets;
+import org.glassfish.jersey.internal.inject.InjectionManager;
 
 /**
  * @author Michal Gajdos
@@ -67,8 +66,8 @@ final class SecurityServerScopeProvider extends ServerScopeProvider {
     private SecurityContext securityContext;
 
     @Inject
-    public SecurityServerScopeProvider(final Configuration config, final ServiceLocator serviceLocator) {
-        super(config, serviceLocator);
+    public SecurityServerScopeProvider(final Configuration config, final InjectionManager injectionManager) {
+        super(config, injectionManager);
     }
 
     @Override
@@ -76,7 +75,7 @@ final class SecurityServerScopeProvider extends ServerScopeProvider {
         Set<String> filteringScope = super.getFilteringScopes(entityAnnotations, false);
 
         if (filteringScope.isEmpty()) {
-            filteringScope = Sets.newHashSet();
+            filteringScope = new HashSet<>();
 
             // Get all roles collected from entities and check with current security context.
             for (final String role : SecurityHelper.getProcessedRoles()) {

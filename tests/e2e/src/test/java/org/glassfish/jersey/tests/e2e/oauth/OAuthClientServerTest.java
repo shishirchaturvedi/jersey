@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,7 +42,10 @@ package org.glassfish.jersey.tests.e2e.oauth;
 
 import java.net.URI;
 import java.security.Principal;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -64,7 +67,7 @@ import org.glassfish.jersey.client.oauth1.AccessToken;
 import org.glassfish.jersey.client.oauth1.ConsumerCredentials;
 import org.glassfish.jersey.client.oauth1.OAuth1AuthorizationFlow;
 import org.glassfish.jersey.client.oauth1.OAuth1ClientSupport;
-import org.glassfish.jersey.filter.LoggingFilter;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.oauth1.DefaultOAuth1Provider;
 import org.glassfish.jersey.server.oauth1.OAuth1Provider;
@@ -76,8 +79,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 import com.sun.security.auth.UserPrincipal;
-
-import jersey.repackaged.com.google.common.collect.Sets;
 
 /**
  * Tests client and server OAuth 1 functionality.
@@ -107,14 +108,16 @@ public class OAuthClientServerTest extends JerseyTest {
         };
 
         oAuthProvider.addAccessToken(PROMETHEUS_TOKEN, PROMETHEUS_SECRET, CONSUMER_KEY,
-                "http://callback.url", prometheusPrincipal, Sets.newHashSet("admin", "user"),
+                "http://callback.url", prometheusPrincipal,
+                Arrays.asList("admin", "user").stream().collect(Collectors.toSet()),
                 new MultivaluedHashMap<String, String>());
         final OAuth1ServerFeature oAuth1ServerFeature = new OAuth1ServerFeature(oAuthProvider,
                 "requestTokenSpecialUri", "accessTokenSpecialUri");
         final ResourceConfig resourceConfig = new ResourceConfig();
         resourceConfig.register(oAuth1ServerFeature);
         resourceConfig.register(MyProtectedResource.class);
-        resourceConfig.register(new LoggingFilter(Logger.getLogger(OAuthClientServerTest.class.getName()), true));
+        resourceConfig.register(new LoggingFeature(Logger.getLogger(OAuthClientServerTest.class.getName()),
+                LoggingFeature.Verbosity.PAYLOAD_ANY));
         resourceConfig.register(OAuthAuthorizationResource.class);
         resourceConfig.property(OAuth1ServerProperties.TIMESTAMP_UNIT, "SECONDS");
         resourceConfig.property(OAuth1ServerProperties.MAX_NONCE_CACHE_SIZE, 20);
@@ -154,7 +157,7 @@ public class OAuthClientServerTest extends JerseyTest {
             return defProvider.authorizeToken(
                     defProvider.getRequestToken(token),
                     new UserPrincipal("homer"),
-                    Sets.newHashSet("user"));
+                    Collections.singleton("user"));
         }
     }
 

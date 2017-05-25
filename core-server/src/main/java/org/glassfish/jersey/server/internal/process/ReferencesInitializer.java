@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,17 +37,15 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+
 package org.glassfish.jersey.server.internal.process;
 
-import javax.inject.Inject;
+import java.util.function.Function;
+
 import javax.inject.Provider;
 
-import org.glassfish.jersey.internal.util.collection.Ref;
+import org.glassfish.jersey.internal.inject.InjectionManager;
 import org.glassfish.jersey.server.spi.RequestScopedInitializer;
-
-import org.glassfish.hk2.api.ServiceLocator;
-
-import jersey.repackaged.com.google.common.base.Function;
 
 /**
  * Request/response scoped injection support initialization stage.
@@ -56,25 +54,24 @@ import jersey.repackaged.com.google.common.base.Function;
  */
 public final class ReferencesInitializer implements Function<RequestProcessingContext, RequestProcessingContext> {
 
-    private final ServiceLocator locator;
-    private final Provider<Ref<RequestProcessingContext>> processingContextRefProvider;
+    private final InjectionManager injectionManager;
+    private final Provider<RequestProcessingContextReference> processingContextRefProvider;
 
     /**
      * Injection constructor.
      *
-     * @param locator application service locator.
+     * @param injectionManager application injection manager.
      * @param processingContextRefProvider container request reference provider (request-scoped).
      */
-    @Inject
-    ReferencesInitializer(
-            final ServiceLocator locator,
-            final Provider<Ref<RequestProcessingContext>> processingContextRefProvider) {
-        this.locator = locator;
+    public ReferencesInitializer(
+            InjectionManager injectionManager, Provider<RequestProcessingContextReference> processingContextRefProvider) {
+        this.injectionManager = injectionManager;
         this.processingContextRefProvider = processingContextRefProvider;
     }
 
     /**
      * Initialize the request references using the incoming request processing context.
+     *
      *
      * @param context incoming request context.
      * @return same (unmodified) request context.
@@ -85,7 +82,7 @@ public final class ReferencesInitializer implements Function<RequestProcessingCo
 
         final RequestScopedInitializer requestScopedInitializer = context.request().getRequestScopedInitializer();
         if (requestScopedInitializer != null) {
-            requestScopedInitializer.initialize(locator);
+            requestScopedInitializer.initialize(injectionManager);
         }
 
         return context;

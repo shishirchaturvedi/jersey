@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,10 +40,15 @@
 
 package org.glassfish.jersey.server.internal.monitoring;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -62,8 +67,6 @@ import org.glassfish.jersey.server.monitoring.ResourceStatistics;
 
 import org.junit.Assert;
 import org.junit.Test;
-
-import jersey.repackaged.com.google.common.collect.Lists;
 
 /**
  * @author Miroslav Fuksa
@@ -136,8 +139,9 @@ public class MonitoringStatisticsTest {
     }
 
     private MonitoringStatisticsImpl getSimpleStats() {
-        final List<Resource> resources = Lists.newArrayList(Resource.from(TestResource.class),
-                Resource.from(HelloResource.class));
+        final List<Resource> resources = Stream.of(TestResource.class, HelloResource.class)
+                                               .map(Resource::from)
+                                               .collect(Collectors.toList());
 
         ResourceModel model = new ResourceModel.Builder(resources, false).build();
         MonitoringStatisticsImpl.Builder monBuilder = new MonitoringStatisticsImpl.Builder(model);
@@ -147,16 +151,16 @@ public class MonitoringStatisticsTest {
     private MonitoringStatisticsImpl.Builder getProgStats() {
         final Resource.Builder testBuilder = Resource.builder(TestResource.class);
         testBuilder.addChildResource("/prog-child").addMethod("GET").handledBy(MyInflector.class);
-        final List<Resource> resources = Lists.newArrayList(testBuilder.build(),
-                Resource.from(HelloResource.class));
+        final List<Resource> resources = new ArrayList<>();
+        resources.add(testBuilder.build());
+        resources.add(Resource.from(HelloResource.class));
         final Resource.Builder prog = Resource.builder("prog");
         prog.addMethod("GET").handledBy(MyInflector.class);
 
         resources.add(prog.build());
 
         ResourceModel model = new ResourceModel.Builder(resources, false).build();
-        MonitoringStatisticsImpl.Builder monBuilder = new MonitoringStatisticsImpl.Builder(model);
-        return monBuilder;
+        return new MonitoringStatisticsImpl.Builder(model);
     }
 
     @Test

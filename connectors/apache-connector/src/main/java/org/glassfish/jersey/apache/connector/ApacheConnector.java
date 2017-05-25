@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2010-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,6 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+
 package org.glassfish.jersey.apache.connector;
 
 import java.io.BufferedInputStream;
@@ -51,6 +52,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -88,6 +90,7 @@ import org.apache.http.client.AuthCache;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -122,8 +125,6 @@ import org.apache.http.io.SessionOutputBuffer;
 import org.apache.http.util.TextUtils;
 import org.apache.http.util.VersionInfo;
 
-import jersey.repackaged.com.google.common.util.concurrent.MoreExecutors;
-
 /**
  * A {@link Connector} that utilizes the Apache HTTP Client to send and receive
  * HTTP request and responses.
@@ -139,6 +140,7 @@ import jersey.repackaged.com.google.common.util.concurrent.MoreExecutors;
  * <li>{@link ClientProperties#PROXY_PASSWORD}</li>
  * <li>{@link ClientProperties#REQUEST_ENTITY_PROCESSING} - default value is {@link RequestEntityProcessing#CHUNKED}</li>
  * <li>{@link ApacheClientProperties#PREEMPTIVE_BASIC_AUTHENTICATION}</li>
+ * <li>{@link ApacheClientProperties#RETRY_HANDLER}</li>
  * </ul>
  * <p>
  * This connector uses {@link RequestEntityProcessing#CHUNKED chunked encoding} as a default setting. This can
@@ -246,6 +248,11 @@ class ApacheConnector implements Connector {
         final Object credentialsProvider = config.getProperty(ApacheClientProperties.CREDENTIALS_PROVIDER);
         if (credentialsProvider != null && (credentialsProvider instanceof CredentialsProvider)) {
             clientBuilder.setDefaultCredentialsProvider((CredentialsProvider) credentialsProvider);
+        }
+
+        final Object retryHandler = config.getProperties().get(ApacheClientProperties.RETRY_HANDLER);
+        if (retryHandler != null && (retryHandler instanceof HttpRequestRetryHandler)) {
+            clientBuilder.setRetryHandler((HttpRequestRetryHandler) retryHandler);
         }
 
         final Object proxyUri;
@@ -484,16 +491,16 @@ class ApacheConnector implements Connector {
 
     @Override
     public Future<?> apply(final ClientRequest request, final AsyncConnectorCallback callback) {
-        return MoreExecutors.sameThreadExecutor().submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    callback.response(apply(request));
-                } catch (final Throwable t) {
-                    callback.failure(t);
-                }
-            }
-        });
+        try {
+            ClientResponse response = apply(request);
+            callback.response(response);
+            return CompletableFuture.completedFuture(response);
+        } catch (Throwable t) {
+            callback.failure(t);
+            CompletableFuture<Object> future = new CompletableFuture<>();
+            future.completeExceptionally(t);
+            return future;
+        }
     }
 
     @Override

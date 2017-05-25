@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2010-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -45,17 +45,17 @@ import java.util.logging.Logger;
 
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.filter.LoggingFilter;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 
@@ -91,6 +91,11 @@ public class MethodTest extends JerseyTest {
             return entity;
         }
 
+        @PATCH
+        public String patch(String entity) {
+            return entity;
+        }
+
         @DELETE
         public String delete() {
             return "DELETE";
@@ -100,7 +105,7 @@ public class MethodTest extends JerseyTest {
     @Override
     protected Application configure() {
         ResourceConfig config = new ResourceConfig(HttpMethodResource.class);
-        config.register(new LoggingFilter(LOGGER, true));
+        config.register(new LoggingFeature(LOGGER, LoggingFeature.Verbosity.PAYLOAD_ANY));
         return config;
     }
 
@@ -157,9 +162,9 @@ public class MethodTest extends JerseyTest {
         assertEquals("DELETE", response.readEntity(String.class));
     }
 
-    @Test(expected = ProcessingException.class)
+    @Test
     public void testPatch() {
-        target(PATH).request().method("PATCH");
+        Response response = target(PATH).request().patch(Entity.entity("PATCH", MediaType.TEXT_PLAIN));
+        assertEquals("PATCH", response.readEntity(String.class));
     }
-
 }

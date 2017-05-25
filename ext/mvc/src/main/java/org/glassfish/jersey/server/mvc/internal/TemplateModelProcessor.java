@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -41,6 +41,7 @@
 package org.glassfish.jersey.server.mvc.internal;
 
 import java.security.AccessController;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -73,8 +74,6 @@ import org.glassfish.jersey.server.model.internal.ModelProcessorUtil;
 import org.glassfish.jersey.server.mvc.Template;
 import org.glassfish.jersey.server.mvc.Viewable;
 
-import jersey.repackaged.com.google.common.collect.Lists;
-
 /**
  * {@link ModelProcessor Model processor} enhancing (sub-)resources with {@value HttpMethod#GET} methods responsible of producing
  * implicit {@link org.glassfish.jersey.server.mvc.Viewable viewables}.
@@ -92,8 +91,7 @@ class TemplateModelProcessor implements ModelProcessor {
     private static final String IMPLICIT_VIEW_PATH_PARAMETER = "implicit-view-path-parameter";
     private static final String IMPLICIT_VIEW_PATH_PARAMETER_TEMPLATE = "{" + IMPLICIT_VIEW_PATH_PARAMETER + "}";
 
-    private final ResourceContext resourceContext;
-
+    private final Provider<ResourceContext> resourceContextProvider;
     private final Provider<ExtendedUriInfo> extendedUriInfoProvider;
     private final Provider<ConfiguredValidator> validatorProvider;
 
@@ -167,7 +165,7 @@ class TemplateModelProcessor implements ModelProcessor {
             } else if (matchedResources.size() > 1) {
                 return setModelClass(matchedResources.get(1));
             } else {
-                return setModelClass(resourceContext.getResource(resourceClass));
+                return setModelClass(resourceContextProvider.get().getResource(resourceClass));
             }
         }
 
@@ -188,7 +186,7 @@ class TemplateModelProcessor implements ModelProcessor {
          * @return a non-empty list of template names.
          */
         private List<String> getTemplateNames(final ContainerRequestContext requestContext) {
-            final List<String> templateNames = Lists.newArrayList();
+            final List<String> templateNames = new ArrayList<>();
 
             // Template name extracted from path param.
             final String pathTemplate = requestContext.getUriInfo().getPathParameters().getFirst(IMPLICIT_VIEW_PATH_PARAMETER);
@@ -229,15 +227,15 @@ class TemplateModelProcessor implements ModelProcessor {
     /**
      * Create a {@code TemplateModelProcessor} instance.
      *
-     * @param resourceContext         (injected) resource context.
+     * @param resourceContextProvider (injected) resource context provider.
      * @param validatorProvider       Jersey extension of BeanValidation Validator.
      * @param extendedUriInfoProvider (injected) extended uri info provider.
      */
     @Inject
-    TemplateModelProcessor(final ResourceContext resourceContext,
+    TemplateModelProcessor(final Provider<ResourceContext> resourceContextProvider,
                            final Provider<ConfiguredValidator> validatorProvider,
                            final Provider<ExtendedUriInfo> extendedUriInfoProvider) {
-        this.resourceContext = resourceContext;
+        this.resourceContextProvider = resourceContextProvider;
         this.validatorProvider = validatorProvider;
         this.extendedUriInfoProvider = extendedUriInfoProvider;
     }
@@ -317,7 +315,7 @@ class TemplateModelProcessor implements ModelProcessor {
      * @return list of enhancing methods.
      */
     private List<ModelProcessorUtil.Method> getEnhancingMethods(final RuntimeResource runtimeResource) {
-        final List<ModelProcessorUtil.Method> newMethods = Lists.newArrayList();
+        final List<ModelProcessorUtil.Method> newMethods = new ArrayList<>();
 
         for (final Resource resource : runtimeResource.getResources()) {
             // Handler classes.

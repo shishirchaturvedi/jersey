@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2010-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010-2016 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,7 +40,6 @@
 
 package org.glassfish.jersey.simple;
 
-import java.io.Closeable;
 import java.net.URI;
 import java.security.AccessController;
 import java.util.logging.Level;
@@ -48,8 +47,8 @@ import java.util.logging.Logger;
 
 import javax.ws.rs.core.UriBuilder;
 
-import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.internal.util.PropertiesHelper;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import org.junit.After;
@@ -74,8 +73,8 @@ public abstract class AbstractSimpleServerTester {
      * @return The HTTP port of the URI
      */
     protected final int getPort() {
-        final String value =
-                AccessController.doPrivileged(PropertiesHelper.getSystemProperty("jersey.config.test.container.port"));
+        final String value = AccessController
+                .doPrivileged(PropertiesHelper.getSystemProperty("jersey.config.test.container.port"));
         if (value != null) {
 
             try {
@@ -85,17 +84,19 @@ public abstract class AbstractSimpleServerTester {
                 }
                 return i;
             } catch (NumberFormatException e) {
-                LOGGER.log(Level.CONFIG,
+                LOGGER.log(
+                        Level.CONFIG,
                         "Value of 'jersey.config.test.container.port'"
-                                + " property is not a valid positive integer [" + value + "]."
-                                + " Reverting to default [" + DEFAULT_PORT + "].",
+                        + " property is not a valid positive integer [" + value + "]."
+                        + " Reverting to default [" + DEFAULT_PORT + "].",
                         e);
             }
         }
+
         return DEFAULT_PORT;
     }
 
-    private volatile Closeable server;
+    private volatile SimpleServer server;
 
     public UriBuilder getUri() {
         return UriBuilder.fromUri("http://localhost").port(getPort()).path(CONTEXT);
@@ -103,7 +104,14 @@ public abstract class AbstractSimpleServerTester {
 
     public void startServer(Class... resources) {
         ResourceConfig config = new ResourceConfig(resources);
-        config.register(LoggingFilter.class);
+        config.register(LoggingFeature.class);
+        final URI baseUri = getBaseUri();
+        server = SimpleContainerFactory.create(baseUri, config);
+        LOGGER.log(Level.INFO, "Simple-http server started on base uri: " + baseUri);
+    }
+
+    public void startServerNoLoggingFilter(Class... resources) {
+        ResourceConfig config = new ResourceConfig(resources);
         final URI baseUri = getBaseUri();
         server = SimpleContainerFactory.create(baseUri, config);
         LOGGER.log(Level.INFO, "Simple-http server started on base uri: " + baseUri);
@@ -111,20 +119,26 @@ public abstract class AbstractSimpleServerTester {
 
     public void startServer(ResourceConfig config) {
         final URI baseUri = getBaseUri();
-        config.register(LoggingFilter.class);
+        config.register(LoggingFeature.class);
         server = SimpleContainerFactory.create(baseUri, config);
         LOGGER.log(Level.INFO, "Simple-http server started on base uri: " + baseUri);
     }
 
     public void startServer(ResourceConfig config, int count, int select) {
         final URI baseUri = getBaseUri();
-        config.register(LoggingFilter.class);
+        config.register(LoggingFeature.class);
         server = SimpleContainerFactory.create(baseUri, config, count, select);
         LOGGER.log(Level.INFO, "Simple-http server started on base uri: " + baseUri);
     }
 
     public URI getBaseUri() {
         return UriBuilder.fromUri("http://localhost/").port(getPort()).build();
+    }
+
+    public void setDebug(boolean enable) {
+        if (server != null) {
+            server.setDebug(enable);
+        }
     }
 
     public void stopServer() {
